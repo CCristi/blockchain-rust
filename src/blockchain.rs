@@ -4,16 +4,22 @@ pub struct Blockchain {
     pub blocks: Vec<Block>,
 }
 
+#[allow(dead_code)]
 impl Blockchain {
     pub fn new() -> Self {
         Blockchain { blocks: vec![Block::genesis()] }
     }
 
-    pub fn add_block(&mut self, data: String) -> &Block {
+    pub fn mine_and_add_block(&mut self, data: String) -> &Block {
         let last_block = self.blocks.last().unwrap();
         let new_block = Block::mine_block(last_block, data);
 
         self.blocks.push(new_block);
+        self.blocks.last().unwrap()
+    }
+
+    pub fn add_block(&mut self, block: Block) -> &Block {
+        self.blocks.push(block);
         self.blocks.last().unwrap()
     }
 
@@ -51,8 +57,7 @@ impl std::fmt::Debug for Blockchain {
 
         for block in &self.blocks {
             blocks.push_str("\n");
-            blocks.push_str(&format!("\t{:?}", block));
-            blocks.push_str("\n");
+            blocks.push_str(&format!("{:?}", block));
         }
 
         write!(f, "Blockchain {{ {} }}", blocks)

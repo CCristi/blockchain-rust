@@ -1,23 +1,40 @@
 use chrono::prelude::*;
+use crate::api::run_server;
+use std::sync::Mutex;
+use std::thread;
+use actix_web::web::service;
+use once_cell::sync::Lazy;
 
 mod block;
 mod blockchain;
 mod crypto_utils;
+mod api;
 
-fn main() {
-    let mut blockchain = blockchain::Blockchain::new();
-    let mut prev_time: i64 = Utc::now().timestamp_millis();
-    let mut duration_sum = 0;
+pub(crate) static BLOCKCHAIN: Lazy<Mutex<blockchain::Blockchain>> = Lazy::new(|| Mutex::new(blockchain::Blockchain::new()));
 
-    for i in 0..100000 {
-        let block = blockchain.add_block(format!("Block {}", i));
-        let mine_duration = block.timestamp - prev_time;
+#[actix_web::main]
+async fn main() -> () {
+    let server = run_server();
 
-        duration_sum += mine_duration;
-        prev_time = block.timestamp;
+    // span a mine thread
+    thread::spawn(move || {
+        let mut i = 1;
 
-        println!("Block {} added, average time {}, difficulty {}", i, duration_sum / (i + 1), block.difficulty);
-    }
+        loop {
+            let blockchain = BLOCKCHAIN.lock().unwrap();
+            let last_block = (*blockchain.blocks.last().unwrap()).clone();
 
-    println!("blockchain validity: {}", blockchain.verify());
+            drop(blockchain);
+
+            let block = block::Block::mine_block(&last_block, format!("Block {}", i));
+            let mut blockchain = BLOCKCHAIN.lock().unwrap();
+
+            blockchain.add_block(block);
+            i += 1;
+
+            drop(blockchain);
+        }
+    });
+
+    return server.await;
 }

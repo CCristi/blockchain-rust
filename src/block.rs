@@ -1,7 +1,9 @@
-use std::fmt::Formatter;
+use std::fmt::{format, Formatter};
+use std::ops::Deref;
 use chrono::prelude::*;
 use crate::crypto_utils;
 
+#[derive(Clone)]
 pub struct Block {
     pub timestamp: i64,
     pub last_hash: String,
@@ -74,13 +76,14 @@ impl Block {
     }
 
     pub fn compute_hash(&self) -> String {
-        let mut parts = String::from("");
-
-        parts.push_str(&self.timestamp.to_string());
-        parts.push_str(&self.last_hash);
-        parts.push_str(&self.data);
-        parts.push_str(&self.nonce.to_string());
-        parts.push_str(&self.difficulty.to_string());
+        let parts = format!(
+            "{}, {}, {}, {}, {}",
+            self.timestamp,
+            self.last_hash,
+            self.data,
+            self.nonce,
+            self.difficulty
+        );
 
         crypto_utils::sha256_hash(&parts)
     }
